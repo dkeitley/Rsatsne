@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1587743550984.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "932761DF",
+    "lastKnownWriteTime" : 7956021205179054129,
+    "last_content_update" : 1587743550984,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "id" : "f5b397156c16495b90a79a8a61853072",
+        "name" : "mouse.markers",
+        "title" : "mouse.markers"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 11,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "object_explorer"
+}

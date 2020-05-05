@@ -1,0 +1,150 @@
+
+
+library(scater)
+library(biomaRt)
+library(DropletUtils)
+library(scran)
+library(ggplot2)
+library(gridExtra)
+
+set.seed(42)
+
+
+
+# QC ----------------------------------------------------------------------
+
+
+getMitoGenes <- function(sce,species="ocuniculus") {
+  genes = rowData(sce)[,1]
+
+  # Get Mitochondria genes
+  mart = useMart("ensembl", dataset = paste0(species,"_gene_ensembl"))
+  chr_data = getBM(attributes=c("ensembl_gene_id", "chromosome_name"),
+                   filters = "ensembl_gene_id",
+                   values = genes, mart = mart)
+
+  #TODO: save and restore from cache
+  mt_genes = chr_data$ensembl_gene_id[chr_data$chromosome_name=="MT"]
+
+  return(mt_genes)
+}
+
+
+plotMitoFraction <- function(sce,mt_genes) {
+  if(missing(mt_genes)) {
+    mt_genes <- getMitoGenes(sce)
+  }
+
+  genes <- rowData(sce)[,1]
+  counts <- counts(sce)
+  lib_sizes <- colSums(counts)
+
+  mt_counts <- counts[which(genes %in% mt_genes),]
+  mt_frac <- colSums(mt_counts)/colSums(counts)
+
+  p = qplot(lib_sizes,mt_frac) + scale_x_log10() +
+    labs(x="UMI count", y="MT count fraction")
+
+  return(p)
+
+}
+
+
+plotLibrarySize <- function(sce) {
+  lib_sizes <- colSums(counts(sce))
+  p = ggplot() + geom_histogram(aes(x=lib_sizes),colour="black") +
+    xlab("Library size")
+  return(p)
+}
+
+
+getPerCellQCMetrics <- function(sce,mt_genes) {
+  if(missing(mt_genes)) {
+    mt_genes <- getMitoGenes(sce)
+  }
+
+  genes = rowData(sce)[,1]
+  is_mito <- genes %in% mt_genes
+  qc_metrics <- perCellQCMetrics(sce,subsets=list(Mito=is_mito))
+  return(qc_metrics)
+}
+
+
+plotNumExpressedGenes <- function(sce) {
+  counts <- counts(sce)
+  ngenes <- colSums(counts>0)
+  p <- ggplot() + geom_histogram(aes(x=ngenes),colour="black") +
+    xlab("Number of expressed genes")
+  return(p)
+}
+
+
+plotQCSummary <- function(sce) {
+  p1 <- plotLibrarySize(sce)
+  p2<- plotNumExpressedGenes(sce)
+  p3 <- plotMitoFraction(sce)
+  p = grid.arrange(p1,p2,p3,nrow=1)
+  return(p)
+}
+
+
+
+plotCountDropOff <- function(sce) {
+
+  counts <- counts(sce)
+  bcrank <- barcodeRanks(counts)
+  #e.out <- emptyDrops(counts)
+
+  uniq <- !duplicated(bcrank$rank)
+  p = plot(bcrank$rank[uniq], bcrank$total[uniq], log="xy",
+       xlab="Rank", ylab="Total UMI count", cex.lab=1.2)
+
+  p <- p+abline(h=metadata(bcrank)$inflection, col="darkgreen", lty=2)
+  p<- p + abline(h=metadata(bcrank)$knee, col="dodgerblue", lty=2)
+
+  p< p + legend("bottomleft", legend=c("Inflection", "Knee"),
+         col=c("darkgreen", "dodgerblue"), lty=2, cex=1.2)
+
+  return(p)
+}
+
+
+
+
+
+# Normalisation -----------------------------------------------------------
+
+
+
+# Uses deconvoluted size factors to normalise and log-transform counts
+normaliseDeconv <- function(sce,min_clust_size=100,max_clust_size=6000) {
+  lib_sizes = colSums(counts(sce))
+
+  quick_clusts <- quickCluster(sce,min.size=min_clust_size,method="igraph")
+  sce<-computeSumFactors(sce, clusters=quick_clusts,max.cluster.size=max_clust_size)
+  sce <- logNormCounts(sce)
+
+  return(sce)
+}
+
+
+
+plotDeconvSizeFactors <- function(sce) {
+  lib_sizes = colSums(counts(sce))
+  sfs <- sizeFactors(sce)
+
+  ggplot(data = data.frame(X = lib_sizes, Y = sfs),
+         mapping = aes(x = X, y = Y)) +
+    geom_point() +
+    scale_x_log10() +
+    scale_y_log10() +
+    labs(x = "Number of UMIs", y = "Deconvolved size factor")
+}
+
+
+
+
+
+
+
+

@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1588336968780.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "B810D8FE",
+    "lastKnownWriteTime" : 1588217402,
+    "last_content_update" : 1588217402,
+    "path" : "G:/My Drive/Postgrad/PhD/Projects/rabbit-gastrulation-atlas/analysis/src/process.R",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "84,0",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 9,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

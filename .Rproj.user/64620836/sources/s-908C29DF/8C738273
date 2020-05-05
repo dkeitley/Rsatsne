@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1587116260588.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "8C738273",
+    "lastKnownWriteTime" : 1587677946,
+    "last_content_update" : 1587677946,
+    "path" : "G:/My Drive/Postgrad/PhD/Projects/scRNAseq-integration/lib/Rsatsne/src/rcpp_hello.cpp",
+    "project_path" : "src/rcpp_hello.cpp",
+    "properties" : {
+        "cursorPosition" : "0,0",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "cpp"
+}

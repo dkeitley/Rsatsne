@@ -1,0 +1,72 @@
+
+
+#' @importFrom BiocNeighbors KmknnParam findKNN
+#' @importFrom BiocParallel SerialParam
+.calculate_satsne <- function(x,y,shared_feats, ncomponents = 2, ntop = 500,
+    subset_row = NULL, feature_set=NULL,
+    scale=FALSE, scale_features=NULL,
+    transposed=FALSE,
+    perplexity=NULL, normalize = TRUE, theta = 0.5,pca=FALSE,
+    dimred=NULL, use_dimred=NULL, n_dimred=NULL,...,
+    external_neighbors=FALSE, BNPARAM = KmknnParam(), BPPARAM = SerialParam())
+{
+    print("Running SATSNE...")
+
+
+    # Get shared dimension matrices
+    xshared <- x[as.character(shared_feats[,1]),]
+    yshared <- y[as.character(shared_feats[,2]),]
+
+
+    if (!transposed) {
+        x <- .get_mat_for_reddim(x, subset_row=subset_row, ntop=ntop, scale=scale)
+        y <- .get_mat_for_reddim(y, subset_row=subset_row, ntop=ntop, scale=scale)
+    }
+
+    x <- as.matrix(x)
+    y <- as.matrix(y)
+
+
+    if (is.null(perplexity)) {
+        perplexity <- min(50, floor(nrow(x) / 5))
+    }
+
+    args <- list(perplexity=perplexity, dims=ncomponents,pca=is.null(dimred), theta=theta, ...)
+    if (!external_neighbors || theta==0) {
+        sattsne_out <- do.call(Rsatsne, c(list(x,y,xshared,yshared, check_duplicates = FALSE, normalize=normalize), args))
+    } else {
+        if (normalize) {
+            x <- Rtsne::normalize_input(x)
+            y <- Rtsne::normalize_input(y)
+        }
+        nn_out1 <- findKNN(x, k=floor(3*perplexity), BNPARAM=BNPARAM, BPPARAM=BPPARAM)
+        nn_out2 <- findKNN(y, k=floor(3*perplexity), BNPARAM=BNPARAM, BPPARAM=BPPARAM)
+
+        satsne_out <- do.call(Rtsne::Rtsne_neighbors, c(list(nn_out1$index, nn_out1$distance,nn_out2$index,nn_out2$distance), args))
+    }
+
+    #satsne_out$Y
+}
+
+
+
+#' @export
+setGeneric("calculateSATSNE", function(x, ...) standardGeneric("calculateSATSNE"))
+
+
+#' @export
+setMethod("calculateSATSNE", "ANY", .calculate_satsne)
+
+
+#' @export
+setMethod("calculateSATSNE", "SingleCellExperiment", function(x,y,shared_feats, ..., pca=is.null(dimred),
+                                                            exprs_values="logcounts", dimred=NULL, use_dimred=NULL, n_dimred=NULL)
+{
+    dimred <- .switch_arg_names(use_dimred, dimred)
+    matx <- .get_mat_from_sce(x, exprs_values=exprs_values, dimred=dimred, n_dimred=n_dimred)
+    maty <- .get_mat_from_sce(y, exprs_values=exprs_values, dimred=dimred, n_dimred=n_dimred)
+
+    .calculate_satsne(matx,maty,shared_feats, transposed=!is.null(dimred), pca=pca, ...)
+})
+
+

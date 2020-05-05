@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1587130276753.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "C76BADED",
+    "lastKnownWriteTime" : 1587760223,
+    "last_content_update" : 1587760223,
+    "path" : "G:/My Drive/Postgrad/PhD/Projects/scRNAseq-integration/lib/Rsatsne/src/Rsatsne.cpp",
+    "project_path" : "src/Rsatsne.cpp",
+    "properties" : {
+        "cursorPosition" : "18,23",
+        "scrollLine" : "6"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 7,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "cpp"
+}

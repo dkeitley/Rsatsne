@@ -1,0 +1,153 @@
+
+
+
+# TODO: Add SCE to this
+scRNAseqDataset <- function(name,path,species,ensembl_abbrev,genes,ensembl_ids,meta,counts,sce,
+                            seurat,hyperparams){
+  structure(class = "scRNAseqDataset", list(
+    name = name,
+    path = path,
+    species = species,
+    ensembl_abbrev = ensembl_abbrev,
+    genes = genes,
+    ensembl_ids = ensembl_ids,
+    meta = meta,
+    count_matrix = counts,
+    sce=sce,
+    seurat=seurat,
+    hyperparams = hyperparams
+  ))
+}
+
+
+
+loadPijuanSala2019 <- function(path,sample=FALSE) {
+
+  genes = read.table(file = paste0(mouse.path,'genes.tsv'), sep = '\t')
+
+  if(!sample) {
+    meta = data.frame(read.table(file = paste0(path,'meta.tab'), sep = '\t', header = TRUE))
+    cell_names = meta[,1]
+    rownames(meta) = cell_names
+    meta = meta[,-1]
+    meta[["species"]] = "mouse"
+    counts = Read10X(data.dir = path)
+
+    sce <- SingleCellExperiment(assays = list(counts = counts),
+                                colData = meta,
+                                rowData = genes)
+
+    seurat <- CreateSeuratObject(counts = counts, meta.data = meta,
+                                       project = "scRNAseq-integration")
+    hyperparams = list(min_dist=0.3,n_neigbours=35)
+
+  } else{
+    load(paste0(path,"md_small"))
+    counts = as.matrix(GetAssayData(md_small, slot = "counts"))
+    seurat = md_small
+    seurat = AddMetaData(seurat,"mouse",col.name="species")
+    meta = md_small@meta.data
+    meta[["species"]] = "mouse"
+
+    sce <- SingleCellExperiment(assays = list(counts = counts),
+                                colData = meta,
+                                rowData = genes)
+    hyperparams=list()
+  }
+
+  out <- scRNAseqDataset(name="PijuanSala2018",path=path,species="mouse",
+                         ensembl_abbrev="mmusculus",genes=genes[,2],ensembl_ids=genes[,1],
+                         meta=meta,counts=counts,sce=sce,
+                         seurat=seurat,hyperparams=hyperparams)
+
+  return(out)
+
+}
+
+
+
+
+loadWagner2018 <- function(path,sample=FALSE) {
+  meta = data.frame(read.csv(file = paste0(path,'meta.csv'), header=TRUE))
+  colnames(meta)[10:11] = c("celltype","stage")
+
+  cell_ids = meta$unique_cell_id
+  rownames(meta) = cell_ids
+  genes = data.frame(read.csv(file = paste0(path,'genes.csv'), header=TRUE))$index
+
+  if(!sample) {
+    counts = t(readMM(paste0(path,"matrix.mtx")))
+    colnames(counts) = cell_ids
+    rownames(counts) = genes
+
+    sce <- SingleCellExperiment(assays = list(counts = counts),
+                                       colData = meta)
+
+    seurat <- CreateSeuratObject(counts = counts, meta.data = meta,
+                                     project = "scRNAseq-integration")
+    hyperparams = list(min_dist=0.6,n_neighbours=25)
+
+  } else{
+    data = readRDS(paste0(path,"zeb_small.rds"))
+    meta = data@meta.data
+    data = AddMetaData(data,"zebrafish",col.name="species")
+    seurat = data
+    counts = as.matrix(GetAssayData(data, slot = "counts"))
+
+    sce <- SingleCellExperiment(assays = list(counts = counts),
+                                colData = meta)
+    hyperparams=list()
+  }
+
+  meta[["species"]] = "zebrafish"
+
+  out <-  scRNAseqDataset(name="Wagner2018",path=path,species="zebrafish",
+                          ensembl_abbrev="drerio",genes=genes,ensembl_ids = "",
+                          meta=meta,counts=counts,sce=sce,
+                          seurat=seurat,hyperparams = hyperparams)
+  return(out)
+
+}
+
+
+
+
+loadBriggs2018 <- function(path) {
+  raw.data = fread(path, showProgress = TRUE,
+                   header=FALSE,stringsAsFactors = FALSE)
+
+  cell_ids = paste0("cell_",seq(0,(ncol(raw.data)-1)))
+  colnames(raw.data) = cell_ids
+
+  counts.temp = mapply(raw.data[-(1:9),-1],FUN=as.numeric)
+  counts = as.matrix(counts.temp)
+  genes = as.character(unlist(raw.data[-(1:9),1]))
+  rownames(counts) = genes
+
+  meta = raw.data[1:9,]
+  meta = as.data.frame(t(meta))
+  colnames(meta) = unlist(meta[1,])
+  meta = meta[-1,]
+  colnames(meta)[7] = "stage"
+  colnames(meta)[8] = "celltype"
+
+  sce <- SingleCellExperiment(assays = list(counts = counts),
+                              colData = meta)
+
+  seurat <- CreateSeuratObject(counts = counts, meta.data = meta,
+                                    project = "scRNAseq-integration")
+
+  out <-  scRNAseqDataset(name="Briggs2018",path=.path,species="xenopus",
+                          ensembl_abbrev="xtropicalis",genes=genes,ensembl_ids = "",
+                          meta=meta,counts=counts,sce=sce,
+                          seurat=seurat,hyperparams = c())
+
+  return(out)
+
+}
+
+
+
+
+
+

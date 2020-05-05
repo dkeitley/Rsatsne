@@ -1,0 +1,14 @@
+liz.genes_w_func
+turt.genes_w_func
+
+genes_same_func <- merge(liz.genes_w_func,turt.genes_w_func,by="V2")
+shared_feats <- data.frame(lizard=genes_same_func$V1.x,turtle=genes_same_func$V1.y)
+
+
+
+rabbit_ensembl = useEnsembl("ensembl",dataset="ocuniculus_gene_ensembl")
+genemap <- getBM(attributes=c("ensembl_gene_id",  "chromosome_name"), values = genes, mart = rabbit_ensembl)
+
+counts<-assay(rab,"counts")
+mt.counts = counts[which(genes[,1] %in% genemap$ensembl_gene_id[genemap$chromosome_name=="MT"]), mart=rabbit_ensembl]
+mt.fraction = colSums(mt.counts)/lib.sizes
