@@ -91,6 +91,58 @@ arma::vec find_nearest_mnns(arma::mat ymat1, arma::mat ymat2, NumericMatrix mat2
 
 
 
+double * compute_mnn_gradient(double* Y1, double* Y2, NumericMatrix mat21, unsigned int nk1,
+                                unsigned int N1, unsigned int N2, int no_dims, double mnn_weight) {
+
+  // Load Y matrices by column
+  arma::mat ymat1 = arma::mat(N1,no_dims);
+
+  for(unsigned int i=0; i<(N1*no_dims);i+=no_dims) {
+    for(unsigned int j=0; j<no_dims; j++) {
+      ymat1(i/no_dims,j) = Y1[i+j];
+    }
+  }
+
+  arma::mat ymat2 = arma::mat(N2,no_dims);
+
+  for(unsigned int i=0; i<(N2*no_dims);i+=no_dims) {
+    for(unsigned int j=0; j<no_dims; j++) {
+      ymat2(i/no_dims,j) = Y2[i+j];
+    }
+  }
+
+  arma::mat mnn_mat = Rcpp::as<arma::mat>(mat21);
+  arma::mat mnn_emb_pos = arma::mat(N2*nk1,2).fill(NA_REAL);
+
+  int start=0;
+  for(int i=0; i<nk1; i++) {
+    arma::uvec mnns_i = arma::conv_to<arma::uvec>::from(mnn_mat.col(i));
+
+    arma::uvec not_na = find(mnns_i != 0);
+    mnns_i = mnns_i.elem(not_na);
+
+    arma::uvec inds = not_na + start;
+    mnn_emb_pos.rows(inds) = ymat1.rows(mnns_i-1); //-1 to fix for C++ indexing
+
+    start = start+N2;
+  }
+
+
+  arma::mat yd2 = arma::repmat(ymat2,nk1,1);
+  arma::mat ydiff = yd2-mnn_emb_pos;
+  arma::vec lnorm = arma::sum(ydiff,1);
+  lnorm = mnn_weight*lnorm;
+
+  return(lnorm.memptr());
+
+}
+
+
+
+
+
+
+
 double* calc_new_momentum(arma::mat ymat1,arma::mat ymat2, arma::vec match21,
                          NumericMatrix mat12, NumericMatrix mat21,
                          unsigned int N1, unsigned int N2, int no_dims,double binding_force) {
@@ -244,15 +296,20 @@ void run_satsne(TSNE<2> tsne1, TSNE<2> tsne2, NumericMatrix mat12,NumericMatrix 
       mom_update2 = zero_mom2;
       mom_update1 = zero_mom1;
 
-    }
+     }
 
-    tsne1.iterate(iter,N1,Y1,mom_update1,costs1,itercosts);
-    tsne2.iterate(iter,N2,Y2,mom_update2,costs2,itercosts);
+    double* mnn_grad2 = compute_mnn_gradient(Y1,Y2, mat21, nk1,N1,N2,no_dims, 1);
+    double* mnn_grad1 = compute_mnn_gradient(Y2,Y1, mat12, nk2,N2,N1,no_dims, 1);
+
+
+
+    tsne1.iterate(iter,N1,Y1,mom_update1,mnn_grad1,costs1,itercosts);
+    tsne2.iterate(iter,N2,Y2,mom_update2,mnn_grad2,costs2,itercosts);
 
 
     int box_size = 10;
-    rescale_embedding(Y1,N1,no_dims,box_size);
-    rescale_embedding(Y2,N2,no_dims,box_size);
+    //rescale_embedding(Y1,N1,no_dims,box_size);
+    //rescale_embedding(Y2,N2,no_dims,box_size);
 
     //Rcpp::Rcout << std::endl << mom_update1[62] << std::endl;
     //Rcpp::Rcout << std::endl << mom_update2[132] << std::endl;

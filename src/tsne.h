@@ -49,14 +49,14 @@ public:
     void initialise(double* X, unsigned int N, int D, double* Y, bool distance_precomputed, double* cost, double* itercost);
     void run(double* X, Rcpp::NumericMatrix mat21, unsigned int N, int D, double* Y, bool distance_precomputed, double* cost, double* itercost);
     void run(const int* nn_index, const double* nn_dist, unsigned int N, int K, double* Y, double* cost, double* itercost);
-    void iterate(int iter,unsigned int N, double* Y, double* mom_update, double* cost, double* itercost);
+    void iterate(int iter,unsigned int N, double* Y, double* mom_update,double* mnn_grad, double* cost, double* itercost);
     unsigned int N;
 private:
     void symmetrizeMatrix(unsigned int N);
     void trainIterations(unsigned int N, double* Y, Rcpp::NumericMatrix mat21, double* cost, double* itercost);
 
-    void computeGradient(double* P, unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, unsigned int N, int D, double* dC, double theta);
-    void computeExactGradient(double* P, double* Y, unsigned int N, int D, double* dC);
+    void computeGradient(double* P, unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, unsigned int N, int D, double* dC, double theta,double*mnn_grad);
+    void computeExactGradient(double* P, double* Y, unsigned int N, int D, double* dC,double* mnn_grad);
     double evaluateError(double* P, double* Y, unsigned int N, int D);
     double evaluateError(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, unsigned int N, int D, double theta);
     void getCost(double* P, double* Y, unsigned int N, int D, double* costs);

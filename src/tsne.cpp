@@ -196,7 +196,7 @@ void TSNE<NDims>::run(const int* nn_index, const double* nn_dist, unsigned int N
 
 
 template<int NDims>
-void TSNE<NDims>::iterate(int iter, unsigned int N, double* Y, double* mom_update, double* cost, double* itercost) {
+void TSNE<NDims>::iterate(int iter, unsigned int N, double* Y, double* mom_update, double * mnn_grad, double* cost, double* itercost) {
 
   //Rprintf("Iterate func.");
   // Stop lying about the P-values after a while, and switch momentum
@@ -207,8 +207,8 @@ void TSNE<NDims>::iterate(int iter, unsigned int N, double* Y, double* mom_updat
   if(iter == mom_switch_iter) momentum = final_momentum;
 
   // Compute (approximate) gradient
-  if(exact) computeExactGradient(P.data(), Y, N, NDims, dY);
-  else computeGradient(P.data(), row_P.data(), col_P.data(), val_P.data(), Y, N, NDims, dY, theta);
+  if(exact) computeExactGradient(P.data(), Y, N, NDims, dY,mnn_grad);
+  else computeGradient(P.data(), row_P.data(), col_P.data(), val_P.data(), Y, N, NDims, dY, theta,mnn_grad);
 
   //Rprintf("Updating gains...\n");
   // Update gains
@@ -220,6 +220,7 @@ void TSNE<NDims>::iterate(int iter, unsigned int N, double* Y, double* mom_updat
 
   // Perform gradient update (with momentum and gains)
   for(unsigned int i = 0; i < N * NDims; i++) uY[i] = mom_update[i] + momentum * uY[i] - eta * gains[i] * dY[i];
+  //for(unsigned int i = 0; i < N * NDims; i++) uY[i] = momentum * uY[i] - eta * gains[i] * dY[i];
   for(unsigned int i = 0; i < N * NDims; i++)  Y[i] = Y[i] + uY[i];
 
   //Rcpp::Rcout << std::endl << mom_update[62] << std::endl;
@@ -276,8 +277,10 @@ void TSNE<NDims>::trainIterations(unsigned int N, double* Y, Rcpp::NumericMatrix
 
 // Compute gradient of the t-SNE cost function (using Barnes-Hut algorithm)
 template <int NDims>
-void TSNE<NDims>::computeGradient(double* P, unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, unsigned int N, int D, double* dC, double theta)
+void TSNE<NDims>::computeGradient(double* P, unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, unsigned int N, int D, double* dC, double theta,double* mnn_grad)
 {
+
+
     // Construct space-partitioning tree on current map
     SPTree<NDims>* tree = new SPTree<NDims>(Y, N);
 
@@ -312,7 +315,9 @@ void TSNE<NDims>::computeGradient(double* P, unsigned int* inp_row_P, unsigned i
 
 // Compute gradient of the t-SNE cost function (exact)
 template <int NDims>
-void TSNE<NDims>::computeExactGradient(double* P, double* Y, unsigned int N, int D, double* dC) {
+void TSNE<NDims>::computeExactGradient(double* P, double* Y, unsigned int N, int D, double* dC, double* mnn_grad) {
+
+  Rprintf("Computing exact gradient!\n");
 
 	// Make sure the current gradient contains zeros
 	for(unsigned int i = 0; i < N * D; i++) dC[i] = 0.0;
@@ -341,7 +346,7 @@ void TSNE<NDims>::computeExactGradient(double* P, double* Y, unsigned int N, int
             if(n != m) {
                 double mult = (P[n * N + m] - (Q[n * N + m] / sum_Q)) * Q[n * N + m];
                 for(int d = 0; d < D; d++) {
-                    dC[n * D + d] += (Y[n * D + d] - Y[m * D + d]) * mult;
+                    dC[n * D + d] += (Y[n * D + d] - Y[m * D + d]) * mult + mnn_grad[n*D + d];
                 }
             }
 		}

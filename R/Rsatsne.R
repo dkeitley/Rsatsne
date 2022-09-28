@@ -69,17 +69,11 @@ Rsatsne.default <- function(X,Y, Xshared,Yshared,nk1=10,nk2=10, mat12=NULL,mat21
         if (!requireNamespace("irlba", quietly = TRUE)) {stop("Package \"irlba\" is required for partial PCA. Please install it.", call. = FALSE)}
         X <- irlba::prcomp_irlba(X, n = initial_dims, center = pca_center, scale = pca_scale)$x
         Y <- irlba::prcomp_irlba(Y, n = initial_dims, center = pca_center, scale = pca_scale)$x
-        Xshared <- irlba::prcomp_irlba(Xshared, n = initial_dims, center = pca_center, scale = pca_scale)$x
-        Yshared <- irlba::prcomp_irlba(Yshared, n = initial_dims, center = pca_center, scale = pca_scale)$x
 
       }else{
         if(verbose & min(dim(X))>2500) cat("Consider setting partial_pca=TRUE for large matrices\n")
         X <- prcomp(X, retx=TRUE, center = pca_center, scale. = pca_scale, rank. = initial_dims)$x
         Y <- prcomp(Y, retx=TRUE, center = pca_center, scale. = pca_scale, rank. = initial_dims)$x
-        Xshared <- prcomp(Xshared, retx=TRUE, center = pca_center, scale. = pca_scale, rank. = initial_dims)$x
-        Yshared <- prcomp(Yshared, retx=TRUE, center = pca_center, scale. = pca_scale, rank. = initial_dims)$x
-
-
       }
     }
 
@@ -101,8 +95,6 @@ Rsatsne.default <- function(X,Y, Xshared,Yshared,nk1=10,nk2=10, mat12=NULL,mat21
 
       mnns <- batchelor::findMutualNN(Yshared,Xshared,nk1,nk2)
       print("Found MNNs.")
-      mat <- as.data.frame(mnns)
-
 
 
       Z1 <- sapply(seq_len(nrow(Y)),function(i) mat[(mat[,1]==i),2])  #nns of data2 in data1
@@ -142,11 +134,8 @@ Rsatsne.default <- function(X,Y, Xshared,Yshared,nk1=10,nk2=10, mat12=NULL,mat21
   }
 
   print("About to call Rsatsne_cpp code")
-  out <- do.call(Rsatsne_cpp, c(list(X1=X,X2=Y,mat12,mat21,nk1,nk2, distance_precomputed=is_distance, num_threads=num_threads), tsne.args))
+  out <- do.call(Rsatsne_cpp, c(list(X1=X, X2=Y, mat12, mat21, nk1, nk2, distance_precomputed=is_distance, num_threads=num_threads), tsne.args))
 
-  # info <- list(N=ncol(X))
-  # if (!is_distance) { out$origD <- nrow(X) } # 'origD' is unknown for distance matrices.
-  # c(info, out, .clear_unwanted_params(tsne.args))
 }
 
 
