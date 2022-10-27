@@ -209,7 +209,9 @@ void run_satsne(TSNE<2> tsne1, TSNE<2> tsne2, NumericMatrix mat12,NumericMatrix 
 
   double* zero_mom1 = (double*) calloc(N1*no_dims, sizeof(double));
 
-  //TODO: REMOVE THIS
+
+  // Create matrix of zero momentum
+  // Probability a more efficient way to implement this
   for(int i=0; i<(N1*no_dims); i++) {
     zero_mom1[i] = 0;
   }
@@ -336,47 +338,3 @@ Rcpp::List Rsatsne_cpp(NumericMatrix X1, NumericMatrix X2, NumericMatrix mat12,N
 
 }
 
-
-/*
-// Function that runs the Barnes-Hut implementation of t-SNE on nearest neighbor results.
-// [[Rcpp::export]]
-Rcpp::List Rtsne_nn_cpp(IntegerMatrix nn_dex, NumericMatrix nn_dist,
-                     int no_dims, double perplexity,
-                     double theta, bool verbose, int max_iter,
-                     NumericMatrix Y_in, bool init,
-                     int stop_lying_iter, int mom_switch_iter,
-                     double momentum, double final_momentum,
-                     double eta, double exaggeration_factor, unsigned int num_threads) {
-
-    size_t N = nn_dex.ncol(), K=nn_dex.nrow(); // transposed - columns are points, rows are neighbors.
-    if (verbose) Rprintf("Read the NN results for %i points successfully!\n", N);
-    std::vector<double> Y(N * no_dims), costs(N), itercosts(static_cast<int>(std::ceil(max_iter/50.0)));
-
-    // Providing user-supplied solution.
-    if (init) {
-        for (size_t i = 0; i < Y.size(); i++) Y[i] = Y_in[i];
-        if (verbose) Rprintf("Using user supplied starting positions\n");
-    }
-
-    // Run tsne
-    if (no_dims==1) {
-      TSNE<1> tsne(perplexity, theta, verbose, max_iter, init, stop_lying_iter, mom_switch_iter,
-              momentum, final_momentum, eta, exaggeration_factor, num_threads);
-      tsne.run(nn_dex.begin(), nn_dist.begin(), N, K, Y.data(), costs.data(), itercosts.data());
-    } else if (no_dims==2) {
-      TSNE<2> tsne(perplexity, theta, verbose, max_iter, init, stop_lying_iter, mom_switch_iter,
-              momentum, final_momentum, eta, exaggeration_factor, num_threads);
-      tsne.run(nn_dex.begin(), nn_dist.begin(), N, K, Y.data(), costs.data(), itercosts.data());
-    } else if (no_dims==3) {
-      TSNE<3> tsne(perplexity, theta, verbose, max_iter, init, stop_lying_iter, mom_switch_iter,
-              momentum, final_momentum, eta, exaggeration_factor, num_threads);
-      tsne.run(nn_dex.begin(), nn_dist.begin(), N, K, Y.data(), costs.data(), itercosts.data());
-    } else {
-      Rcpp::stop("Only 1, 2 or 3 dimensional output is suppported.\n");
-    }
-
-    return Rcpp::List::create(Rcpp::_["Y"]=Rcpp::NumericMatrix(no_dims, N, Y.data()),
-            Rcpp::_["costs"]=Rcpp::NumericVector(costs.begin(), costs.end()),
-            Rcpp::_["itercosts"]=Rcpp::NumericVector(itercosts.begin(), itercosts.end()));
-}
-*/

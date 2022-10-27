@@ -1,11 +1,10 @@
 Package: Rsatsne
 Type: Package
-Title: What the Package Does (Title Case)
+Title: SATSNE
 Version: 0.1.0
 Author: Daniel Keitley, Laleh Haghverdi
 Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+Description: Implements the SATSNE algorithm for integration and dimensionality reduction.
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true

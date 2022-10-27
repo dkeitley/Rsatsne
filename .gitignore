@@ -1,4 +1,7 @@
 test_workspace.RData
 Rsatsne.Rproj
-
-
+.*
+lib/
+data-test/
+scripts/
+.Rproj.user
