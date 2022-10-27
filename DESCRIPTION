@@ -18,4 +18,4 @@ Suggests: BiocStyle, BiocFileCache, biomaRt, beachmat, cowplot,
         testthat, pheatmap, Biobase, limma, DropletUtils
 LinkingTo: Rcpp, RcppArmadillo
 NeedsCompilation: yes
-RoxygenNote: 7.1.0
+RoxygenNote: 7.1.2

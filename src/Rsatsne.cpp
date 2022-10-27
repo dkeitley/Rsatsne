@@ -1,9 +1,10 @@
 #include <RcppArmadillo.h>
 // [[Rcpp::depends(RcppArmadillo)]]
-#include <RcppArmadilloExtensions/sample.h>
 
+#include <RcppArmadilloExtensions/sample.h>
 #include <Rcpp.h>
 #include "tsne.h"
+
 using namespace Rcpp;
 
 Rcpp::List save_results(int N, int no_dims, const std::vector<double>& Y, const std::vector<double>& costs, const std::vector<double>& itercosts,
@@ -38,7 +39,8 @@ arma::vec sample_mnns(NumericMatrix mnn_mat, unsigned int N) {
 
 
 arma::vec find_nearest_mnns(arma::mat ymat1, arma::mat ymat2, NumericMatrix mat21,
-                       unsigned int N1, unsigned int N2,int no_dims, unsigned int nk1, unsigned int nk2) {
+                       unsigned int N1, unsigned int N2, int no_dims,
+                       unsigned int nk1, unsigned int nk2) {
 
 
   arma::mat mnn_mat = Rcpp::as<arma::mat>(mat21);
@@ -181,7 +183,8 @@ double* calc_new_momentum(arma::mat ymat1,arma::mat ymat2, arma::vec match21,
 
 
 double* satsne_update(int iter, double* Y1,double*Y2, NumericMatrix mat12,NumericMatrix mat21,
-                   unsigned int N1, unsigned int N2, int no_dims, int nk1, int nk2, bool sample, double binding_force) {
+                   unsigned int N1, unsigned int N2, int no_dims, int nk1, int nk2,
+                   bool sample, double binding_force, bool return_logs, NumericVector mnn_log) {
 
 
   // Load Y matrices by column
@@ -203,16 +206,21 @@ double* satsne_update(int iter, double* Y1,double*Y2, NumericMatrix mat12,Numeri
 
   arma::vec match12;
 
-  // A) in early iterrations couple randomly with one of the sharedX MNNs
+  // A) in early iterations couple randomly with one of the sharedX MNNs
   if(sample) {
     match12 = sample_mnns(mat21,N2);
 
   // B) in late iterrations couple with the MNNs which is the closeset in embedding space
   } else {
-     match12 = find_nearest_mnns(ymat1,ymat2,mat21,N1,N2,no_dims,nk1,nk2);
+     match12 = find_nearest_mnns(ymat1, ymat2, mat21, N1, N2, no_dims, nk1, nk2);
   }
 
-  double* new_mom_2 = calc_new_momentum(ymat2,ymat1,match12,mat21,mat12,N2,N1,no_dims,binding_force);
+  // Log MNNs
+  if(return_logs) { for(int i=0; i < N2; i++) { mnn_log[i] = match12[i];}}
+
+
+  double* new_mom_2 = calc_new_momentum(ymat2, ymat1, match12, mat21, mat12,
+                                        N2,N1,no_dims,binding_force);
 
   return(new_mom_2);
 
@@ -250,18 +258,20 @@ void run_satsne(TSNE<2> tsne1, TSNE<2> tsne2, NumericMatrix mat12,NumericMatrix 
                 int nk1, int nk2, double* X1, int N1, int D1, double* Y1, double* X2, int N2,
                 int D2, double * Y2, bool distance_precomputed, double* costs1,
                 double* costs2, double* itercosts,int max_iter, double binding_force,
-                int coupled_period, int uncoupled_period) {
+                int coupled_period, int uncoupled_period, Rcpp::List log, bool return_logs) {
 
   tsne1.initialise(X1, N1, D1, Y1, distance_precomputed, costs1, itercosts);
   tsne2.initialise(X2, N2, D2, Y2, distance_precomputed, costs2, itercosts);
 
-  Rprintf("Initialised both tsnes.\n");
+  Rprintf("Initialised both TSNEs.\n");
 
   int no_dims = 2;
 
   double* zero_mom1 = (double*) calloc(N1*no_dims, sizeof(double));
 
-  //TODO: REMOVE THIS
+
+  // Create matrix of zero momentum
+  // Probability a more efficient way to implement this
   for(int i=0; i<(N1*no_dims); i++) {
     zero_mom1[i] = 0;
   }
@@ -272,6 +282,7 @@ void run_satsne(TSNE<2> tsne1, TSNE<2> tsne2, NumericMatrix mat12,NumericMatrix 
   }
 
 
+
   int period = coupled_period + uncoupled_period;
 
   double* mom_update1;
@@ -279,35 +290,68 @@ void run_satsne(TSNE<2> tsne1, TSNE<2> tsne2, NumericMatrix mat12,NumericMatrix 
 
   bool sample_mnns = false;
 
-  max_iter= max_iter  - (max_iter % period ) + coupled_period + 10;
 
+
+  // Start iterations of SATSNE algorithm
   Rprintf("Starting iterations...\n");
-
   for(int iter = 0; iter < max_iter; iter++) {
+
+    // Log embedding positions
+    arma::mat Y1_mat;
+    arma::mat Y2_mat;
+
+    NumericVector mnn12_log;
+    NumericVector mnn21_log;
+
+    if(return_logs) {
+      Y1_mat = arma::mat(Y1, N1, no_dims);
+      Y2_mat = arma::mat(Y2, N2, no_dims);
+
+      mnn12_log = NumericVector(N1);
+      mnn21_log = NumericVector(N2);
+
+    }
+
 
     if(iter<(max_iter/4)) {sample_mnns=true;}
     else {sample_mnns=false;}
 
+    // If coupled iteration
     if(((iter+1) % period) < coupled_period) {
-      mom_update2 = satsne_update(iter,Y1,Y2,mat12,mat21,N1,N2,2,nk1,nk2,sample_mnns,binding_force);
-      mom_update1 = satsne_update(iter,Y2,Y1,mat21,mat12,N2,N1,2,nk1,nk2,sample_mnns,binding_force);
 
-    } else {
+      mom_update2 = satsne_update(iter,Y1,Y2,mat12,mat21,N1,N2,2,nk1,nk2,
+                                  sample_mnns,binding_force, return_logs, mnn21_log);
+      mom_update1 = satsne_update(iter,Y2,Y1,mat21,mat12,N2,N1,2,nk1,nk2,
+                                  sample_mnns,binding_force, return_logs, mnn12_log);
+
+     } else {
       mom_update2 = zero_mom2;
       mom_update1 = zero_mom1;
-
      }
 
     double* mnn_grad2 = compute_mnn_gradient(Y1,Y2, mat21, nk1,N1,N2,no_dims, 1);
     double* mnn_grad1 = compute_mnn_gradient(Y2,Y1, mat12, nk2,N2,N1,no_dims, 1);
 
 
+    // Add to logs
+    if(return_logs) {
+      Rcpp::Rcout << std::endl << NumericMatrix(Y1, N1, no_dims)[1] << std::endl;
+      Rcpp::Rcout << std::endl <<Y1_mat[1] << std::endl;
 
+      log[iter] = Rcpp::List::create(Rcpp::_["Y1"]=Y1_mat,
+                                     Rcpp::_["Y2"]=Y2_mat,
+                                     Rcpp::_["MNNs12"]=mnn12_log,
+                                     Rcpp::_["MNNs21"]=mnn21_log);
+    }
+
+
+    // Update embedding using momentum and gradient values
     tsne1.iterate(iter,N1,Y1,mom_update1,mnn_grad1,costs1,itercosts);
     tsne2.iterate(iter,N2,Y2,mom_update2,mnn_grad2,costs2,itercosts);
 
 
-    int box_size = 10;
+    // TODO: Implement box bounding
+    //int box_size = 10;
     //rescale_embedding(Y1,N1,no_dims,box_size);
     //rescale_embedding(Y2,N2,no_dims,box_size);
 
@@ -321,10 +365,6 @@ void run_satsne(TSNE<2> tsne1, TSNE<2> tsne2, NumericMatrix mat12,NumericMatrix 
 
 
 
-
-
-
-
 // Function that runs the Barnes-Hut implementation of t-SNE
 // [[Rcpp::export]]
 Rcpp::List Rsatsne_cpp(NumericMatrix X1, NumericMatrix X2, NumericMatrix mat12,NumericMatrix mat21,
@@ -334,7 +374,8 @@ Rcpp::List Rsatsne_cpp(NumericMatrix X1, NumericMatrix X2, NumericMatrix mat12,N
                      int stop_lying_iter, int mom_switch_iter,
                      double momentum, double final_momentum, double binding_force,
                      int coupled_period, int uncoupled_period,
-                     double eta, double exaggeration_factor, unsigned int num_threads) {
+                     double eta, double exaggeration_factor, unsigned int num_threads,
+                     bool return_logs) {
 
     size_t N1 = X1.ncol(), D1 = X1.nrow();
     size_t N2 = X2.ncol(), D2 = X2.nrow();
@@ -349,6 +390,11 @@ Rcpp::List Rsatsne_cpp(NumericMatrix X1, NumericMatrix X2, NumericMatrix mat12,N
     std::vector<double> Y1(N1 * no_dims), costs1(N1), itercosts(static_cast<int>(std::ceil(max_iter/50.0)));
     std::vector<double> Y2(N2 * no_dims), costs2(N2);
 
+    max_iter = max_iter  - (max_iter % (coupled_period + uncoupled_period) ) + coupled_period + 10;
+
+    // Initialise list to hold logs
+    Rcpp::List log(max_iter);
+
 
     // Providing user-supplied solution.
     if (init) {
@@ -358,13 +404,8 @@ Rcpp::List Rsatsne_cpp(NumericMatrix X1, NumericMatrix X2, NumericMatrix mat12,N
     }
 
 
-    // TODO: Add functionality for 1 or 3 dimensions output
-    // Run tsne
-    if (no_dims==1) {
-      //SATSNE<1> satsne(perplexity, theta, verbose, max_iter, init, stop_lying_iter, mom_switch_iter,
-        //      momentum, final_momentum, eta, exaggeration_factor, num_threads);
-      //satsne.run(data, N1, D1, Y1.data(), distance_precomputed, costs.data(), itercosts.data());
-    } else if (no_dims==2) {
+    // Run SATSNE
+    if (no_dims==2) {
 
       TSNE<2> tsne1(perplexity, theta, verbose, max_iter, init, stop_lying_iter, mom_switch_iter,
                     momentum, final_momentum, eta, exaggeration_factor, num_threads);
@@ -374,66 +415,37 @@ Rcpp::List Rsatsne_cpp(NumericMatrix X1, NumericMatrix X2, NumericMatrix mat12,N
 
       run_satsne(tsne1,tsne2,mat12,mat21,nk1,nk2, data1, N1, D1, Y1.data(), data2, N2,D2,Y2.data(),
                  distance_precomputed, costs1.data(),costs2.data(), itercosts.data(),max_iter,
-                 binding_force,coupled_period, uncoupled_period);
+                 binding_force,coupled_period, uncoupled_period, log, return_logs);
+//Y1_log, Y2_log, match12_log, match21_log);
 
-
-    } else if (no_dims==3) {
-      //TSNE<3> satsne(perplexity, theta, verbose, max_iter, init, stop_lying_iter, mom_switch_iter,
-            //  momentum, final_momentum, eta, exaggeration_factor, num_threads);
-      //satsne.run(data1, N1, D1, Y1.data(), distance_precomputed, costs1.data(), itercosts.data());
     } else {
-      Rcpp::stop("Only 1, 2 or 3 dimensional output is suppported.\n");
+      Rcpp::stop("Only 2 dimensional output is suppported.\n");
     }
 
     return Rcpp::List::create(Rcpp::_["Y1"]=Rcpp::NumericMatrix(no_dims, N1, Y1.data()),
             Rcpp::_["Y2"]=Rcpp::NumericMatrix(no_dims, N2, Y2.data()),
             Rcpp::_["costs1"]=Rcpp::NumericVector(costs1.begin(), costs1.end()),
             Rcpp::_["costs2"]=Rcpp::NumericVector(costs2.begin(), costs2.end()),
-            Rcpp::_["itercosts"]=Rcpp::NumericVector(itercosts.begin(), itercosts.end()));
+            Rcpp::_["itercosts"]=Rcpp::NumericVector(itercosts.begin(), itercosts.end()),
+            Rcpp::_["logs"] = log);
+
 
 }
+
+
 
 
 /*
-// Function that runs the Barnes-Hut implementation of t-SNE on nearest neighbor results.
-// [[Rcpp::export]]
-Rcpp::List Rtsne_nn_cpp(IntegerMatrix nn_dex, NumericMatrix nn_dist,
-                     int no_dims, double perplexity,
-                     double theta, bool verbose, int max_iter,
-                     NumericMatrix Y_in, bool init,
-                     int stop_lying_iter, int mom_switch_iter,
-                     double momentum, double final_momentum,
-                     double eta, double exaggeration_factor, unsigned int num_threads) {
+ * std::vector<double> Y1_log(N1 * max_iters * no_dims)
+ * std::vector<double> Y2_log(N2 * max_iters * no_dims)
+ *
+ * arma::vec match12;
+ *
+ * Rcpp::_["Y1_log"]=Rcpp::NumericMatrix(no_dims, max_iters, N1, Y1_log.data())
+ * Rcpp::_["Y2_log"]=Rcpp::NumericMatrix(no_dims, max_iters, N2, Y2.data())
+ * Rcpp::_["Y12_mnn"]=Rcpp::NumericMatrix(no_dims, max_iters, N2, match12.data())
+ * Rcpp::_["Y21_mnn"]=Rcpp::NumericMatrix(no_dims, max_iters, N1, match21.data())
+ *
+ *
+ */
 
-    size_t N = nn_dex.ncol(), K=nn_dex.nrow(); // transposed - columns are points, rows are neighbors.
-    if (verbose) Rprintf("Read the NN results for %i points successfully!\n", N);
-    std::vector<double> Y(N * no_dims), costs(N), itercosts(static_cast<int>(std::ceil(max_iter/50.0)));
-
-    // Providing user-supplied solution.
-    if (init) {
-        for (size_t i = 0; i < Y.size(); i++) Y[i] = Y_in[i];
-        if (verbose) Rprintf("Using user supplied starting positions\n");
-    }
-
-    // Run tsne
-    if (no_dims==1) {
-      TSNE<1> tsne(perplexity, theta, verbose, max_iter, init, stop_lying_iter, mom_switch_iter,
-              momentum, final_momentum, eta, exaggeration_factor, num_threads);
-      tsne.run(nn_dex.begin(), nn_dist.begin(), N, K, Y.data(), costs.data(), itercosts.data());
-    } else if (no_dims==2) {
-      TSNE<2> tsne(perplexity, theta, verbose, max_iter, init, stop_lying_iter, mom_switch_iter,
-              momentum, final_momentum, eta, exaggeration_factor, num_threads);
-      tsne.run(nn_dex.begin(), nn_dist.begin(), N, K, Y.data(), costs.data(), itercosts.data());
-    } else if (no_dims==3) {
-      TSNE<3> tsne(perplexity, theta, verbose, max_iter, init, stop_lying_iter, mom_switch_iter,
-              momentum, final_momentum, eta, exaggeration_factor, num_threads);
-      tsne.run(nn_dex.begin(), nn_dist.begin(), N, K, Y.data(), costs.data(), itercosts.data());
-    } else {
-      Rcpp::stop("Only 1, 2 or 3 dimensional output is suppported.\n");
-    }
-
-    return Rcpp::List::create(Rcpp::_["Y"]=Rcpp::NumericMatrix(no_dims, N, Y.data()),
-            Rcpp::_["costs"]=Rcpp::NumericVector(costs.begin(), costs.end()),
-            Rcpp::_["itercosts"]=Rcpp::NumericVector(itercosts.begin(), itercosts.end()));
-}
-*/
