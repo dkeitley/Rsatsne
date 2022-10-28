@@ -207,8 +207,8 @@ void TSNE<NDims>::iterate(int iter, unsigned int N, double* Y, double* mom_updat
   if(iter == mom_switch_iter) momentum = final_momentum;
 
   // Compute (approximate) gradient
-  if(exact) computeExactGradient(P.data(), Y, N, NDims, dY,mnn_grad);
-  else computeGradient(P.data(), row_P.data(), col_P.data(), val_P.data(), Y, N, NDims, dY, theta,mnn_grad);
+  if(exact) computeExactGradient(P.data(), Y, N, NDims, dY, mnn_grad);
+  else computeGradient(P.data(), row_P.data(), col_P.data(), val_P.data(), Y, N, NDims, dY, theta, mnn_grad);
 
   //Rprintf("Updating gains...\n");
   // Update gains

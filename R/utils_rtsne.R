@@ -35,7 +35,7 @@ is.wholenumber <- function(x, tol = .Machine$double.eps^0.5)
 }
 
 .check_tsne_params <- function(nsamples, dims, perplexity, theta, max_iter, verbose, Y_init, stop_lying_iter, mom_switch_iter,
-    momentum, final_momentum, eta, exaggeration_factor,binding_force,coupled_period,uncoupled_period)
+    momentum, final_momentum, eta, exaggeration_factor,binding_force,coupled_period,uncoupled_period, mnn_weight)
 # Checks parameters for the t-SNE algorithm that are independent of
 # the format of the input data (e.g., distance matrix or neighbors).
 {
@@ -66,7 +66,8 @@ is.wholenumber <- function(x, tol = .Machine$double.eps^0.5)
         stop_lying_iter=stop_lying_iter, mom_switch_iter=mom_switch_iter,
         momentum=momentum, final_momentum=final_momentum,
         eta=eta, exaggeration_factor=exaggeration_factor, binding_force=binding_force,
-        coupled_period=coupled_period, uncoupled_period=uncoupled_period)
+        coupled_period=coupled_period, uncoupled_period=uncoupled_period,
+        mnn_weight = mnn_weight)
 }
 
 .clear_unwanted_params <- function(args)

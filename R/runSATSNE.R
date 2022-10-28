@@ -54,6 +54,7 @@
                         stop_lying_iter=ifelse(is.null(Y_init),250L,0L),
                         mom_switch_iter=ifelse(is.null(Y_init),250L,0L),
                         momentum=0.5, final_momentum=0.8, binding_force=0.05,
+                        mnn_weight = 1,
                         eta=200.0, exaggeration_factor=12.0, num_threads=1,
                         verbose = TRUE) {
 
@@ -65,7 +66,8 @@
   tsne.args <- .check_tsne_params(nrow(X), dims=dims, perplexity=perplexity, theta=theta, max_iter=max_iter, verbose=verbose,
                                   Y_init=Y_init, stop_lying_iter=stop_lying_iter, mom_switch_iter=mom_switch_iter,
                                   momentum=momentum, final_momentum=final_momentum, eta=eta, exaggeration_factor=exaggeration_factor,
-                                  binding_force=binding_force,coupled_period=coupled_period,uncoupled_period=uncoupled_period)
+                                  binding_force=binding_force,coupled_period=coupled_period,uncoupled_period=uncoupled_period,
+                                  mnn_weight = mnn_weight)
 
   return(tsne.args)
 
@@ -77,7 +79,7 @@ prepareSATSNE <- function(x_sce, y_sce, shared_feats, assay_type = "logcounts",
                           dimred = NULL, pca = is.null(dimred), shared_pca = TRUE,
                           cosine_norm = TRUE, n_dimred = 50,
                           xy_mnns = NULL, yx_mnns = NULL, nk1 = 10, nk2 = 10,
-                          coupled_period=30, uncoupled_period=20, normalise = TRUE,
+                          coupled_period=30, uncoupled_period=20, mnn_weight = 1, normalise = TRUE,
                           num_threads =1, verbose = TRUE, return_logs = FALSE, ...) {
 
   # Extract individual matrices
@@ -88,7 +90,7 @@ prepareSATSNE <- function(x_sce, y_sce, shared_feats, assay_type = "logcounts",
   # Check TSNE arguments are valid
   if(verbose) print("Checking TSNE arguments...")
   tsne_args <- .check_args(X_mat, Y_mat,
-                           coupled_period, uncoupled_period, ...)
+                           coupled_period, uncoupled_period, mnn_weight = mnn_weight, ...)
 
 
   # Perform PCA on individual matrices e.g. if dimred = NULL
@@ -166,7 +168,7 @@ runSATSNE <- function(x_sce, y_sce, shared_feats, assay_type = "logcounts",
                       dimred = NULL, pca = is.null(dimred), shared_pca = TRUE,
                       cosine_norm = TRUE, n_dimred = 50,
                       xy_mnns = NULL, yx_mnns = NULL, nk1 = 10, nk2 = 10,
-                      coupled_period=30, uncoupled_period=20, normalise = TRUE,
+                      coupled_period=30, uncoupled_period=20, mnn_weight = 1, normalise = TRUE,
                       num_threads =1, verbose = TRUE, return_logs = FALSE, ...) {
 
 
@@ -175,7 +177,7 @@ runSATSNE <- function(x_sce, y_sce, shared_feats, assay_type = "logcounts",
                         cosine_norm = cosine_norm, n_dimred = n_dimred,
                         xy_mnns = xy_mnns, yx_mnns = yx_mnns, nk1 = nk1, nk2 = nk2,
                         coupled_period=coupled_period, uncoupled_period=uncoupled_period,
-                        normalise = normalise, num_threads =num_threads,
+                        mnn_weight = mnn_weight, normalise = normalise, num_threads =num_threads,
                         verbose = verbose, return_logs = return_logs, ...)
 
   # Run SATSNE

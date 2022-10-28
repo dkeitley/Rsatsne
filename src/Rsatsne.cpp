@@ -116,6 +116,7 @@ double * compute_mnn_gradient(double* Y1, double* Y2, NumericMatrix mat21, unsig
   arma::mat mnn_mat = Rcpp::as<arma::mat>(mat21);
   arma::mat mnn_emb_pos = arma::mat(N2*nk1,2).fill(NA_REAL);
 
+  // Get MNN embedding positions
   int start=0;
   for(int i=0; i<nk1; i++) {
     arma::uvec mnns_i = arma::conv_to<arma::uvec>::from(mnn_mat.col(i));
@@ -129,7 +130,7 @@ double * compute_mnn_gradient(double* Y1, double* Y2, NumericMatrix mat21, unsig
     start = start+N2;
   }
 
-
+  // Calculate distance between points and their MNNs
   arma::mat yd2 = arma::repmat(ymat2,nk1,1);
   arma::mat ydiff = yd2-mnn_emb_pos;
   arma::vec lnorm = arma::sum(ydiff,1);
@@ -258,7 +259,7 @@ void run_satsne(TSNE<2> tsne1, TSNE<2> tsne2, NumericMatrix mat12,NumericMatrix 
                 int nk1, int nk2, double* X1, int N1, int D1, double* Y1, double* X2, int N2,
                 int D2, double * Y2, bool distance_precomputed, double* costs1,
                 double* costs2, double* itercosts,int max_iter, double binding_force,
-                int coupled_period, int uncoupled_period, Rcpp::List log, bool return_logs) {
+                int coupled_period, int uncoupled_period, int mnn_weight, Rcpp::List log, bool return_logs) {
 
   tsne1.initialise(X1, N1, D1, Y1, distance_precomputed, costs1, itercosts);
   tsne2.initialise(X2, N2, D2, Y2, distance_precomputed, costs2, itercosts);
@@ -329,13 +330,13 @@ void run_satsne(TSNE<2> tsne1, TSNE<2> tsne2, NumericMatrix mat12,NumericMatrix 
       mom_update1 = zero_mom1;
      }
 
-    double* mnn_grad2 = compute_mnn_gradient(Y1,Y2, mat21, nk1,N1,N2,no_dims, 1);
-    double* mnn_grad1 = compute_mnn_gradient(Y2,Y1, mat12, nk2,N2,N1,no_dims, 1);
+    double* mnn_grad2 = compute_mnn_gradient(Y1,Y2, mat21, nk1,N1,N2,no_dims, mnn_weight);
+    double* mnn_grad1 = compute_mnn_gradient(Y2,Y1, mat12, nk2,N2,N1,no_dims, mnn_weight);
 
 
     // Add to logs
     if(return_logs) {
-      Rcpp::Rcout << std::endl << NumericMatrix(Y1, N1, no_dims)[1] << std::endl;
+      //Rcpp::Rcout << std::endl << NumericMatrix(Y1, N1, no_dims)[1] << std::endl;
       Rcpp::Rcout << std::endl <<Y1_mat[1] << std::endl;
 
       log[iter] = Rcpp::List::create(Rcpp::_["Y1"]=Y1_mat,
@@ -373,7 +374,7 @@ Rcpp::List Rsatsne_cpp(NumericMatrix X1, NumericMatrix X2, NumericMatrix mat12,N
                      bool distance_precomputed, NumericMatrix Y_in, bool init,
                      int stop_lying_iter, int mom_switch_iter,
                      double momentum, double final_momentum, double binding_force,
-                     int coupled_period, int uncoupled_period,
+                     int coupled_period, int uncoupled_period, int mnn_weight,
                      double eta, double exaggeration_factor, unsigned int num_threads,
                      bool return_logs) {
 
@@ -415,7 +416,7 @@ Rcpp::List Rsatsne_cpp(NumericMatrix X1, NumericMatrix X2, NumericMatrix mat12,N
 
       run_satsne(tsne1,tsne2,mat12,mat21,nk1,nk2, data1, N1, D1, Y1.data(), data2, N2,D2,Y2.data(),
                  distance_precomputed, costs1.data(),costs2.data(), itercosts.data(),max_iter,
-                 binding_force,coupled_period, uncoupled_period, log, return_logs);
+                 binding_force,coupled_period, uncoupled_period, mnn_weight, log, return_logs);
 //Y1_log, Y2_log, match12_log, match21_log);
 
     } else {
