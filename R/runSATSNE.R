@@ -15,7 +15,7 @@
     X <- prcomp(X, retx=TRUE, center = pca_center, scale. = pca_scale, rank. = initial_dims)$x
   }
 
-  return(x)
+  return(X)
 
 }
 
