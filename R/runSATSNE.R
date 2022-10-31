@@ -3,7 +3,7 @@
 
 #' @importFrom stats model.matrix na.fail prcomp
 .run_mat_pca <- function(X, partial_pca=FALSE, initial_dims=50,
-                         pca_center=TRUE, pca_scale=FALSE, verbose = NULL) {
+                         pca_center=TRUE, pca_scale=FALSE, verbose = FALSE) {
 
   if(verbose) cat("Performing PCA\n")
   if(partial_pca){
