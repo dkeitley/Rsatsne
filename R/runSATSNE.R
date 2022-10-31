@@ -78,6 +78,7 @@
 prepareSATSNE <- function(x_sce, y_sce, shared_feats, assay_type = "logcounts",
                           dimred = NULL, pca = is.null(dimred), shared_pca = TRUE,
                           cosine_norm = TRUE, n_dimred = 50,
+                          ntop = 500, subset_row = NULL, scale=FALSE,
                           xy_mnns = NULL, yx_mnns = NULL, nk1 = 10, nk2 = 10,
                           coupled_period=30, uncoupled_period=20, mnn_weight = 1, normalise = TRUE,
                           num_threads =1, verbose = TRUE, return_logs = FALSE, ...) {
@@ -85,6 +86,16 @@ prepareSATSNE <- function(x_sce, y_sce, shared_feats, assay_type = "logcounts",
   # Extract individual matrices
   X_mat <- .get_mat_from_sce(x_sce, exprs_values=assay_type, dimred=dimred, n_dimred=n_dimred)
   Y_mat <- .get_mat_from_sce(y_sce, exprs_values=assay_type, dimred=dimred, n_dimred=n_dimred)
+
+
+  # Subset variable genes to perform dimensionality reduction
+  if(is.null(dimred)) {
+    X_mat <- .get_mat_for_reddim(X_mat, subset_row=subset_row, ntop=ntop, scale=scale)
+    Y_mat <- .get_mat_for_reddim(Y_mat, subset_row=subset_row, ntop=ntop, scale=scale)
+  }
+
+  X_mat <- as.matrix(X_mat)
+  Y_mat<- as.matrix(Y_mat)
 
 
   # Check TSNE arguments are valid
@@ -167,6 +178,7 @@ prepareSATSNE <- function(x_sce, y_sce, shared_feats, assay_type = "logcounts",
 runSATSNE <- function(x_sce, y_sce, shared_feats, assay_type = "logcounts",
                       dimred = NULL, pca = is.null(dimred), shared_pca = TRUE,
                       cosine_norm = TRUE, n_dimred = 50,
+                      ntop = 500, subset_row = NULL, scale=FALSE,
                       xy_mnns = NULL, yx_mnns = NULL, nk1 = 10, nk2 = 10,
                       coupled_period=30, uncoupled_period=20, mnn_weight = 1, normalise = TRUE,
                       num_threads =1, verbose = TRUE, return_logs = FALSE, ...) {
@@ -175,6 +187,7 @@ runSATSNE <- function(x_sce, y_sce, shared_feats, assay_type = "logcounts",
   args <- prepareSATSNE(x_sce, y_sce, shared_feats, assay_type = assay_type,
                         dimred = dimred, pca = pca, shared_pca = shared_pca,
                         cosine_norm = cosine_norm, n_dimred = n_dimred,
+                        ntop = ntop, subset_row = subset_row, scale=scale,
                         xy_mnns = xy_mnns, yx_mnns = yx_mnns, nk1 = nk1, nk2 = nk2,
                         coupled_period=coupled_period, uncoupled_period=uncoupled_period,
                         mnn_weight = mnn_weight, normalise = normalise, num_threads =num_threads,
