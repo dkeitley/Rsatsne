@@ -2,6 +2,9 @@
 
 This R package implements the SATSNE method for integrating single-cell data.
 
+![SATSNE schematic](res/satsne_schematic.jpg)
+
+
 ## Installation
 
 ``` r
