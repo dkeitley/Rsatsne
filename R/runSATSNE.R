@@ -107,8 +107,8 @@ prepareSATSNE <- function(x_sce, y_sce, shared_feats, assay_type = "logcounts",
   # Perform PCA on individual matrices e.g. if dimred = NULL
   if(pca) {
     if(verbose) print("Running PCA on individual matrices.")
-    X_mat <- .run_mat_pca(X_mat, ...)
-    Y_mat <- .run_mat_pca(Y_mat, ...)
+    X_mat <- .run_mat_pca(X_mat, verbose = verbose)
+    Y_mat <- .run_mat_pca(Y_mat, verbose = verbose)
   }
 
 
